@@ -47,6 +47,8 @@ public static class Logger
 
     internal static bool Enabled(LogLevel at) => (int)level <= (int)at;
 
+    internal static ILogSink Sink => sink;
+
     public static void Debug(string message) { if (Enabled(LogLevel.Debug)) sink.Debug(message); }
     public static void Info(string message) { if (Enabled(LogLevel.Info)) sink.Info(message); }
     public static void Warn(string message) { if (Enabled(LogLevel.Warn)) sink.Warn(message); }
