@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/crosslang/">
+    <Project Path="crosslang/CSharpPeer/CSharpPeer.csproj" />
+    <Project Path="crosslang/Protobus.CrossLang.Tests/Protobus.CrossLang.Tests.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Protobus.Codegen/Protobus.Codegen.csproj" />
     <Project Path="src/Protobus/Protobus.csproj" />

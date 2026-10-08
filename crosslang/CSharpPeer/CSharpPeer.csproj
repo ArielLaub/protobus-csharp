@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../../src/Protobus.Tools/build/Protobus.Tools.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <ProtobusCodegenDll>$(MSBuildThisFileDirectory)../../src/Protobus.Codegen/bin/$(Configuration)/net8.0/protobus-csharp.dll</ProtobusCodegenDll>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProtobusSchemas Include="../proto" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Grpc.Tools" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Protobus/Protobus.csproj" />
+    <ProjectReference Include="../../src/Protobus.Codegen/Protobus.Codegen.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <Import Project="../../src/Protobus.Tools/build/Protobus.Tools.targets" />
+</Project>
