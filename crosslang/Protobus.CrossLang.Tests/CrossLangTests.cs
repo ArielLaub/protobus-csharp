@@ -160,7 +160,8 @@ public sealed class CrossLangTests : IAsyncLifetime
         var java = Sibling("PROTOBUS_JAVA", "protobus-java");
         if (!File.Exists(Path.Combine(java, "gradlew"))) return (null, $"protobus-java not found at {java} (set PROTOBUS_JAVA)");
         if (JavaExe() == null) return (null, "JAVA_HOME is not set to a JDK (needed for the Java peer)");
-        var (code, output) = Run(Path.Combine(java, "gradlew"), new[] { "-q", ":crosslang:classes", ":crosslang:printClasspath" }, java);
+        var (code, output) = Run(Path.Combine(java, "gradlew"), new[] { "-q", ":protobus:jar", ":crosslang:classes", ":crosslang:printClasspath" }, java);
+        // The runtime is on the classpath as its jar, which compiling the peer does not build.
         // Gradle may print notices around it: the classpath is the line holding the module's classes.
         var classes = Path.Combine("crosslang", "build", "classes");
         var cp = output.Split('\n').Select(l => l.Trim()).FirstOrDefault(l => l.Contains(classes) && l.Contains(Path.PathSeparator));
