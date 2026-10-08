@@ -134,7 +134,8 @@ instance: `new PlayerProtobus.Proxy(context, "Combat.Player.player6")`.
 ## Without generated code
 
 Extend `MessageService` directly, return the schema's `FileDescriptor` from
-`Schema` (or register it with `context.Factory.Register`), and register
+`Schema` (or register it with `context.Factory.Register`, or load it from a
+descriptor set; see [Clients](clients.md#the-untyped-proxy)), and register
 handlers, typed with a message's parser or over serialized payloads:
 
 <!-- doc-check: compile -->

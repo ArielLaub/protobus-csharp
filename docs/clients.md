@@ -110,3 +110,25 @@ public static class Untyped
 The proxy checks the method exists and is unary or streaming as called before
 anything is sent. Google.Protobuf for C# has no dynamic messages, so there is
 no descriptor-built message form.
+
+A schema that is not compiled into the program can be loaded from a
+descriptor set, written by `protobus-csharp generate --descriptor-out` or by
+`protoc --include_imports --descriptor_set_out`:
+
+<!-- doc-check: compile -->
+```csharp
+using System.Threading.Tasks;
+using Protobus;
+
+public static class Gateway
+{
+    public static async Task<byte[]> CallAsync(Context context, byte[] request)
+    {
+        // Or at startup: await context.InitAsync(url, new[] { "schemas/" }) loads every set under it.
+        context.Factory.LoadDescriptorSet("schemas/billing.binpb");
+        var billing = new ServiceProxy(context, "billing.Invoices");
+        billing.Init();
+        return await billing.CallRawAsync("issue", request);
+    }
+}
+```

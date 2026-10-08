@@ -271,7 +271,10 @@ generated code registers each rpc's handler directly.
   a thread.
 - **Untyped calls.** `ServiceProxy.CallAsync` with a `MessageParser`, and
   `CallRawAsync` / `RegisterMethod` over serialized payloads, serve and call
-  services without generated proxies.
+  services without generated proxies, from schemas compiled in or loaded at
+  runtime from descriptor sets.
+- **Structured logging.** `Log` records events as data for an
+  `IStructuredLogSink`, or as plain lines for any other sink.
 - **An in-memory broker.** `MemoryBroker` runs services and clients
   in-process, with retries, dead-lettering, priorities and connection loss
   modelled. See [Testing](docs/testing.md).

@@ -104,4 +104,41 @@ public sealed class ForwardingSink : ILogSink
 }
 ```
 
+### Structured logging
+
+`Log` writes structured records. A sink implementing `IStructuredLogSink`
+receives them as `LogRecord`s, to forward as data (to a JSON logger, say); any
+other sink receives each as one formatted line at its level.
+
+<!-- doc-check: compile -->
+```csharp
+using System;
+using Protobus;
+
+public sealed class JsonSink : IStructuredLogSink
+{
+    public void Log(LogRecord record) => Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(record));
+    public void Debug(string message) { }
+    public void Info(string message) { }
+    public void Warn(string message) { }
+    public void Error(string message) { }
+}
+
+public static class Structured
+{
+    public static void Published(string correlationId, int size) =>
+        Log.Info("published request", new LogFields("publish")
+        {
+            CorrelationId = correlationId,
+            SizeBytes = size,
+            Outcome = LogOutcome.Confirmed,
+        });
+}
+```
+
+Text fields are sanitised (control characters become spaces) and capped at 256
+characters, the message at 1024. `LogFields.Diagnostics` is a function that
+builds raw diagnostics; it runs only when `Log.DiagnosticsSerializer` is set,
+and only what the serializer returns reaches the record.
+
 protobus never logs message bodies. See [Security](security.md#logging).

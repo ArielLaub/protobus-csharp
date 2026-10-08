@@ -123,8 +123,8 @@ protobus-java.
 | Early-ack (at-most-once) consumers | at most `MaxConcurrent` handlers at once | unbounded on the event loop | at most `maxConcurrent` | |
 | Closing the context | fails pending calls and streams at once, then waits for running handlers, up to `SHUTDOWN_DRAIN_TIMEOUT_MS` | closes at once | fails pending, then drains | fails pending, then drains |
 | Untyped API | serialized payloads (Google.Protobuf has no dynamic messages) | | `DynamicMessage` | dynamic messages |
-| Schemas loaded at runtime | compiled `FileDescriptor`s, registered with the factory | `.proto` text | compiled descriptor sets | `.proto` text |
-| Logging | `ILogSink` | `ILogger` / structured `Log` | `LogSink` / structured `Log`, through SLF4J | `ILogger` / structured `Log` |
+| Schemas loaded at runtime | compiled descriptor sets, or `FileDescriptor`s registered with the factory | `.proto` text | compiled descriptor sets | `.proto` text |
+| Logging | `ILogSink` / structured `Log` | `ILogger` / structured `Log` | `LogSink` / structured `Log`, through SLF4J | `ILogger` / structured `Log` |
 
 Blank cells are behaviours the other port's documentation does not state.
 Python and Go are left out of this table for width; protobus-java's

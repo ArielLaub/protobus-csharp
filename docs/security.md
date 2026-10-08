@@ -34,6 +34,9 @@ and routing keys. A broker URL is logged with its password replaced by `***`,
 and an error about a URL that does not parse never quotes it. Unhandled errors
 are logged with their message and stack trace in the service's own log.
 
+Structured logging through `Log` can carry diagnostics, but only what a
+`Log.DiagnosticsSerializer` you install chooses to keep.
+
 ## Custom-type values
 
 A `bigint` wider than 32 bytes, or a `timestamp` outside ±8.64e15 ms, in a
