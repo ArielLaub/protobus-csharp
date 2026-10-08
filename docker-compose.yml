@@ -7,7 +7,7 @@
 #   docker compose up -d --wait
 #   export PROTOBUS_TEST_AMQP_URL=amqp://guest:guest@127.0.0.1:25672/
 #   export PROTOBUS_TEST_MGMT_URL=http://guest:guest@127.0.0.1:25673
-#   dotnet test tests/Protobus.IntegrationTests
+#   dotnet test --project tests/Protobus.IntegrationTests
 services:
   rabbitmq:
     image: rabbitmq:3-management

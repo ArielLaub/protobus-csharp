@@ -68,9 +68,9 @@ process-wide, so tests that change it should not run in parallel.
 
 | | Needs | Run |
 |---|---|---|
-| unit (runtime, generator, doc snippets) | nothing | `dotnet test tests/Protobus.Tests` |
-| integration | RabbitMQ | `dotnet test tests/Protobus.IntegrationTests` |
-| cross-language | RabbitMQ and the other ports | `dotnet test crosslang/Protobus.CrossLang.Tests` |
+| unit (runtime, generator, doc snippets) | nothing | `dotnet test --project tests/Protobus.Tests` |
+| integration | RabbitMQ | `dotnet test --project tests/Protobus.IntegrationTests` |
+| cross-language | RabbitMQ and the other ports | `dotnet test --project crosslang/Protobus.CrossLang.Tests` |
 | examples | RabbitMQ | `dotnet run --project examples -- calculator` and friends |
 
 The broker suites never default to a broker. Point them at one:

@@ -1,0 +1,164 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  unit:
+    name: unit (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-15, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          # The SDK global.json names builds; the 8.0 runtime runs the net8.0 tests.
+          global-json-file: global.json
+          dotnet-version: 8.0.x
+      - name: build (warnings are errors)
+        run: dotnet build Protobus.slnx -c Release
+      - name: unit suites and doc snippets
+        run: dotnet test --project tests/Protobus.Tests -c Release --no-build
+      - name: pack
+        run: dotnet pack Protobus.slnx -c Release --no-build -o artifacts -p:Version=0.0.0-ci
+      - name: a project using only the packages builds (twice) and runs
+        shell: bash
+        run: |
+          for i in 1 2; do dotnet build tests/PackageConsumer -warnaserror; done
+          dotnet run --project tests/PackageConsumer --no-build
+
+  integration:
+    name: integration (RabbitMQ ${{ matrix.rabbitmq }})
+    runs-on: ubuntu-24.04
+    # The suites never default to a broker; these point them at the service
+    # container. Set only on the jobs that have one.
+    env:
+      PROTOBUS_TEST_AMQP_URL: amqp://guest:guest@127.0.0.1:25672/
+      PROTOBUS_TEST_MGMT_URL: http://guest:guest@127.0.0.1:25673
+    strategy:
+      matrix:
+        rabbitmq: ["3-management", "4-management"]
+    services:
+      rabbitmq:
+        image: rabbitmq:${{ matrix.rabbitmq }}
+        ports:
+          - 25672:5672
+          - 25673:15672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s --health-timeout 10s --health-retries 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          dotnet-version: 8.0.x
+      - name: integration suite
+        run: dotnet test --project tests/Protobus.IntegrationTests -c Release
+      - name: examples run end to end
+        env:
+          AMQP_URL: amqp://guest:guest@127.0.0.1:25672/
+          LOG_LEVEL: warn
+        run: |
+          dotnet build examples -c Release
+          for e in calculator tokenstream combat; do dotnet examples/bin/Release/net8.0/protobus-examples.dll $e; done
+
+  cross-language:
+    name: cross-language (C# <-> TypeScript <-> Python <-> Go <-> C++ <-> Java)
+    runs-on: ubuntu-24.04
+    env:
+      PROTOBUS_TEST_AMQP_URL: amqp://guest:guest@127.0.0.1:25672/
+      PROTOBUS_TEST_MGMT_URL: http://guest:guest@127.0.0.1:25673
+    services:
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports:
+          - 25672:5672
+          - 25673:15672
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 5s --health-timeout 10s --health-retries 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: protobus-csharp
+      # The peers are pinned: bump deliberately, after their own CI passes.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArielLaub/protobus
+          ref: 182eb6d43801c8264c52690897c6ca468e833dde
+          path: protobus
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArielLaub/protobus-py
+          ref: b6290c772811cd6199677aaf4f56ce6f9fd444af
+          path: protobus-py
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArielLaub/protobus-go
+          ref: 1382871f62f08fdb672c6615113f41dbdedd092b
+          path: protobus-go
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArielLaub/protobus-cpp
+          ref: 2d1b698f1d28ab5ce4794aec831990df58cef144
+          path: protobus-cpp
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ArielLaub/protobus-java
+          ref: 91ec68d2dea87ef50d6fe9b0a803f663c7dc4fff # 2.0.0
+          path: protobus-java
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: protobus-csharp/global.json
+          dotnet-version: 8.0.x
+      - uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: stable
+          cache-dependency-path: protobus-go/go.sum
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: build the TypeScript port
+        working-directory: protobus
+        run: npm ci && npm run build-ts
+      - name: install the Python port
+        working-directory: protobus-py
+        run: python -m venv venv && venv/bin/pip install -e .
+      - name: build the C++ peer
+        working-directory: protobus-cpp
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ cmake ninja-build libprotobuf-dev libprotoc-dev protobuf-compiler librabbitmq-dev libgtest-dev
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DPROTOBUS_BUILD_EXAMPLES=OFF
+          cmake --build build --target cpppeer
+      - name: cross-language suite
+        working-directory: protobus-csharp
+        env:
+          PROTOBUS_TS: ${{ github.workspace }}/protobus
+          PROTOBUS_PY: ${{ github.workspace }}/protobus-py
+          PROTOBUS_GO: ${{ github.workspace }}/protobus-go
+          PROTOBUS_CPP: ${{ github.workspace }}/protobus-cpp
+          PROTOBUS_JAVA: ${{ github.workspace }}/protobus-java
+        run: dotnet test --project crosslang/Protobus.CrossLang.Tests -c Release

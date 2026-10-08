@@ -37,7 +37,7 @@ export PROTOBUS_TEST_MGMT_URL=http://guest:guest@127.0.0.1:25673
 (cd ../protobus && npm ci && npm run build-ts)        # the TypeScript peer runs the built library
 (cmake -S ../protobus-cpp -B ../protobus-cpp/build && cmake --build ../protobus-cpp/build --target cpppeer)
 export JAVA_HOME=...                                  # a JDK 17+, for the Java peer
-dotnet test crosslang/Protobus.CrossLang.Tests
+dotnet test --project crosslang/Protobus.CrossLang.Tests
 ```
 
 The peers are found in sibling checkouts: `PROTOBUS_TS` (default
