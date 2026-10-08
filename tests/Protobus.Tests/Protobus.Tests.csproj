@@ -28,8 +28,18 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Protobus/Protobus.csproj" />
-    <ProjectReference Include="../../src/Protobus.Codegen/Protobus.Codegen.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="../../src/Protobus.Codegen/Protobus.Codegen.csproj" />
   </ItemGroup>
+
+  <!-- The generator tests run the protoc Grpc.Tools resolved for this machine. -->
+  <Target Name="_ProtocForTests" BeforeTargets="CoreGenerateAssemblyInfo" DependsOnTargets="Protobuf_ResolvePlatform">
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>Protoc</_Parameter1>
+        <_Parameter2>$(Protobuf_ProtocFullPath)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
 
   <Import Project="../../src/Protobus.Tools/build/Protobus.Tools.targets" />
 </Project>
