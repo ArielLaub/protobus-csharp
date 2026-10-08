@@ -3,7 +3,34 @@
     <_ProtobusDotnet>$(DOTNET_HOST_PATH)</_ProtobusDotnet>
     <_ProtobusDotnet Condition="'$(_ProtobusDotnet)' == ''">dotnet</_ProtobusDotnet>
     <_ProtobusStamp>$(ProtobusOutputDir).generated</_ProtobusStamp>
+    <!-- The Grpc.Tools this package depends on, restored with it: its protoc is the default. -->
+    <_ProtobusGrpcToolsVersion>2.84.0</_ProtobusGrpcToolsVersion>
+    <!-- Grpc.Tools referenced directly: its own resolution runs, and is used. -->
+    <_ProtobusResolveTargets Condition="'$(Protobuf_PackagedToolsPath)' != ''">Protobuf_ResolvePlatform</_ProtobusResolveTargets>
   </PropertyGroup>
+
+  <!--
+    protoc, in order: $(ProtobusProtoc); Grpc.Tools' own resolution when it is referenced
+    directly; the binary in the restored Grpc.Tools package; $(PROTOC); protoc on the PATH.
+  -->
+  <Target Name="_ProtobusResolveProtoc" DependsOnTargets="$(_ProtobusResolveTargets)">
+    <PropertyGroup>
+      <_ProtobusProtoc>$(ProtobusProtoc)</_ProtobusProtoc>
+      <_ProtobusProtoc Condition="'$(_ProtobusProtoc)' == ''">$(Protobuf_ProtocFullPath)</_ProtobusProtoc>
+      <_ProtobusOs Condition="$([MSBuild]::IsOSPlatform('Windows'))">windows</_ProtobusOs>
+      <_ProtobusOs Condition="$([MSBuild]::IsOSPlatform('Linux'))">linux</_ProtobusOs>
+      <_ProtobusOs Condition="$([MSBuild]::IsOSPlatform('OSX'))">macosx</_ProtobusOs>
+      <_ProtobusArch>$([System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture.ToString().ToLowerInvariant())</_ProtobusArch>
+      <_ProtobusCpu Condition="'$(_ProtobusOs)' == 'macosx'">universal</_ProtobusCpu>
+      <_ProtobusCpu Condition="'$(_ProtobusCpu)' == '' and '$(_ProtobusArch)' == 'x86'">x86</_ProtobusCpu>
+      <_ProtobusCpu Condition="'$(_ProtobusCpu)' == '' and '$(_ProtobusArch)' == 'arm64' and '$(_ProtobusOs)' == 'linux'">arm64</_ProtobusCpu>
+      <_ProtobusCpu Condition="'$(_ProtobusCpu)' == ''">x64</_ProtobusCpu>
+      <_ProtobusExe Condition="'$(_ProtobusOs)' == 'windows'">.exe</_ProtobusExe>
+      <_ProtobusPackaged>$(NuGetPackageRoot)grpc.tools/$(_ProtobusGrpcToolsVersion)/tools/$(_ProtobusOs)_$(_ProtobusCpu)/protoc$(_ProtobusExe)</_ProtobusPackaged>
+      <_ProtobusProtoc Condition="'$(_ProtobusProtoc)' == '' and '$(NuGetPackageRoot)' != '' and Exists('$(_ProtobusPackaged)')">$(_ProtobusPackaged)</_ProtobusProtoc>
+      <_ProtobusProtocArg Condition="'$(_ProtobusProtoc)' != ''">--protoc &quot;$(_ProtobusProtoc)&quot;</_ProtobusProtocArg>
+    </PropertyGroup>
+  </Target>
 
   <Target Name="_ProtobusCollectInputs" Condition="'@(ProtobusSchemas)' != ''">
     <ItemGroup>
@@ -12,14 +39,13 @@
     </ItemGroup>
   </Target>
 
-  <!-- protoc comes from Grpc.Tools: Protobuf_ResolvePlatform sets Protobuf_ProtocFullPath. -->
   <Target Name="ProtobusGenerate"
           Condition="'@(ProtobusSchemas)' != ''"
-          DependsOnTargets="Protobuf_ResolvePlatform;_ProtobusCollectInputs"
+          DependsOnTargets="_ProtobusResolveProtoc;_ProtobusCollectInputs"
           Inputs="@(_ProtobusInputs);$(ProtobusCodegenDll);$(MSBuildProjectFullPath)"
           Outputs="$(_ProtobusStamp)">
     <RemoveDir Directories="$(ProtobusOutputDir)" />
-    <Exec Command="&quot;$(_ProtobusDotnet)&quot; &quot;$(ProtobusCodegenDll)&quot; generate @(ProtobusSchemas->'--proto-dir &quot;%(FullPath)&quot;', ' ') @(_ProtobusCustomType->'--custom-type %(Identity)', ' ') --custom-type-namespace $(ProtobusCustomTypeNamespace) --out &quot;$(ProtobusOutputDir)&quot; --protoc &quot;$(Protobuf_ProtocFullPath)&quot;" />
+    <Exec Command="&quot;$(_ProtobusDotnet)&quot; &quot;$(ProtobusCodegenDll)&quot; generate @(ProtobusSchemas->'--proto-dir &quot;%(FullPath)&quot;', ' ') @(_ProtobusCustomType->'--custom-type %(Identity)', ' ') --custom-type-namespace $(ProtobusCustomTypeNamespace) --out &quot;$(ProtobusOutputDir)&quot; $(_ProtobusProtocArg)" />
     <Touch Files="$(_ProtobusStamp)" AlwaysCreate="true" />
   </Target>
 

@@ -23,7 +23,9 @@
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="Grpc.Tools" PrivateAssets="all" />
+    <!-- As a Protobus.Tools consumer has it: restored, its own targets not imported. -->
+    <PackageReference Include="Grpc.Tools" ExcludeAssets="all" PrivateAssets="all" />
+    
   </ItemGroup>
 
   <ItemGroup>
@@ -32,11 +34,11 @@
   </ItemGroup>
 
   <!-- The generator tests run the protoc Grpc.Tools resolved for this machine. -->
-  <Target Name="_ProtocForTests" BeforeTargets="CoreGenerateAssemblyInfo" DependsOnTargets="Protobuf_ResolvePlatform">
+  <Target Name="_ProtocForTests" BeforeTargets="CoreGenerateAssemblyInfo" DependsOnTargets="_ProtobusResolveProtoc">
     <ItemGroup>
       <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
         <_Parameter1>Protoc</_Parameter1>
-        <_Parameter2>$(Protobuf_ProtocFullPath)</_Parameter2>
+        <_Parameter2>$(_ProtobusProtoc)</_Parameter2>
       </AssemblyAttribute>
     </ItemGroup>
   </Target>

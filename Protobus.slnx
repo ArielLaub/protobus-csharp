@@ -5,6 +5,7 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Protobus.Codegen/Protobus.Codegen.csproj" />
+    <Project Path="src/Protobus.Tools/Protobus.Tools.csproj" />
     <Project Path="src/Protobus/Protobus.csproj" />
   </Folder>
   <Folder Name="/tests/">

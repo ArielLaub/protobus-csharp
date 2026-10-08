@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf;
@@ -157,9 +158,14 @@ public class StreamTests : MemoryBus
         await ReplyWithChunks(
             new() { [Config.HeaderSeq] = 0, [Config.HeaderFinal] = false },
             new() { [Config.HeaderSeq] = 2, [Config.HeaderFinal] = true });
-        await using var e = Proxy().Ticks(Ticks(3)).GetAsyncEnumerator();
-        Assert.True(await e.MoveNextAsync());
-        await Assert.ThrowsAsync<StreamSequenceError>(async () => await e.MoveNextAsync());
+        // A gap fails the stream at once, dropping what was buffered (as TypeScript does): chunk 0
+        // is read only when the reader took it before seq 2 arrived. Never a clean end.
+        var got = new List<int>();
+        await Assert.ThrowsAsync<StreamSequenceError>(async () =>
+        {
+            await foreach (var t in Proxy().Ticks(Ticks(3))) got.Add(t.Seq);
+        });
+        Assert.True(got.Count <= 1 && got.All(s => s == 0), string.Join(",", got));
     }
 
     [Fact]

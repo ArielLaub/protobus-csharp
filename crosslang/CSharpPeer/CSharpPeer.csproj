@@ -14,7 +14,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Grpc.Tools" PrivateAssets="all" />
+    <!-- As a Protobus.Tools consumer has it: restored, its own targets not imported. -->
+    <PackageReference Include="Grpc.Tools" ExcludeAssets="all" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    MSBuild integration for protobus code generation: the generator in tools/, the targets in
+    build/, and a dependency on Grpc.Tools for protoc.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <PackageId>Protobus.Tools</PackageId>
+    <Description>Generates protobus service bases and typed proxies from shared .proto files at build time.</Description>
+    <PackageTags>protobus;rabbitmq;protobuf;codegen;msbuild</PackageTags>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- No lib/: nothing to reference, by design. -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Restored with this package so its protoc is on disk; its own targets are not needed. -->
+    <PackageReference Include="Grpc.Tools" PrivateAssets="none" ExcludeAssets="build;buildTransitive" />
+    <ProjectReference Include="../Protobus.Codegen/Protobus.Codegen.csproj" ReferenceOutputAssembly="false" />
+    <None Include="build/**" Pack="true" PackagePath="build" />
+  </ItemGroup>
+
+  <!-- The generator's build output, collected after it is built. -->
+  <Target Name="_ProtobusPackGenerator" BeforeTargets="_GetPackageFiles">
+    <ItemGroup>
+      <None Include="../Protobus.Codegen/bin/$(Configuration)/net8.0/*.dll;../Protobus.Codegen/bin/$(Configuration)/net8.0/*.json"
+            Pack="true" PackagePath="tools/net8.0" />
+    </ItemGroup>
+  </Target>
+</Project>
