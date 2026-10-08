@@ -292,3 +292,88 @@ public class IntegrationTests : IAsyncLifetime
         Assert.True(await RealBroker.WaitForAsync(() => Task.FromResult(s.Stopped == 1), TimeSpan.FromSeconds(10)));
     }
 }
+
+/// <summary>Records warnings, for asserting on what was logged.</summary>
+internal sealed class RecordingSink : ILogSink
+{
+    public readonly ConcurrentQueue<string> Warnings = new();
+    public void Debug(string message) { }
+    public void Info(string message) { }
+    public void Warn(string message) => Warnings.Enqueue(message);
+    public void Error(string message) { }
+}
+
+public class ConsumerCancelTests : IAsyncLifetime
+{
+    private readonly RecordingSink sink = new();
+    private readonly string name = "pbtest.Calc.cc" + Guid.NewGuid().ToString("N").Substring(0, 8);
+    private Context ctx = null!;
+
+    public async ValueTask InitializeAsync()
+    {
+        RealBroker.AmqpUrl();
+        Config.Reset();
+        Logger.Set(sink);
+        Logger.Level = LogLevel.Debug;
+        ctx = new Context(new ContextOptions { Reconnection = new ReconnectionOptions(InitialDelayMs: 100, MaxDelayMs: 500) });
+        await ctx.InitAsync(RealBroker.AmqpUrl());
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await ctx.DisposeAsync();
+        await RealBroker.DeleteServiceAsync(name);
+        Logger.Set(null);
+        Logger.Level = LogLevel.Info;
+        GC.SuppressFinalize(this);
+    }
+
+    private sealed class Adder : CalcProtobus.Base
+    {
+        private readonly string name;
+
+        public Adder(Context c, string name) : base(c) => this.name = name;
+
+        public override string ServiceName => name;
+
+        public override Task<AddResponse> Add(AddRequest r, CallContext ctx) => Task.FromResult(new AddResponse { Result = r.A + r.B });
+    }
+
+    [Fact]
+    public async Task OurOwnCancelIsNotReportedAsTheBrokers()
+    {
+        var s = new Adder(ctx, name);
+        await s.InitAsync();
+        await s.StopConsumingAsync();
+        await s.DisposeAsync();
+        await Task.Delay(200);
+        Assert.DoesNotContain(sink.Warnings, w => w.Contains("cancelled by the broker"));
+    }
+
+    [Fact]
+    public async Task AConsumerTheBrokerCancelsIsRestored()
+    {
+        var s = new Adder(ctx, name);
+        await s.InitAsync();
+        var p = new CalcProtobus.Proxy(ctx, name);
+        p.Init();
+        Assert.Equal(2, (await p.AddAsync(new AddRequest { A = 1, B = 1 })).Result);
+        // Deleting the queue makes the broker cancel its consumer: the channel stays open.
+        await RealBroker.DeleteQueueAsync(name);
+        Assert.True(await RealBroker.WaitForAsync(() => Task.FromResult(sink.Warnings.Any(w => w.Contains("cancelled by the broker"))),
+            TimeSpan.FromSeconds(10)));
+        var ok = false;
+        for (var i = 0; i < 100 && !ok; i++)
+        {
+            try
+            {
+                ok = (await p.AddAsync(new AddRequest { A = 2, B = 3 }, new CallOptions { TimeoutMs = 500 })).Result == 5;
+            }
+            catch (ProtobusException)
+            {
+                await Task.Delay(100);
+            }
+        }
+        Assert.True(ok, "the service never came back");
+    }
+}

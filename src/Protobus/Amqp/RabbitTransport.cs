@@ -365,10 +365,15 @@ public sealed class RabbitTransport : ITransport
                 }
             }
 
-            protected override Task OnCancelAsync(string[] consumerTags, CancellationToken cancellationToken = default)
+            /// <summary>
+            /// The broker's basic.cancel (its queue was deleted, say). Our own cancel arrives as
+            /// basic.cancel-ok instead; the client routes both through OnCancelAsync, which is
+            /// why this hook is the one used.
+            /// </summary>
+            public override async Task HandleBasicCancelAsync(string consumerTag, CancellationToken cancellationToken = default)
             {
+                await base.HandleBasicCancelAsync(consumerTag, cancellationToken).ConfigureAwait(false);
                 onCancel?.Invoke();
-                return Task.CompletedTask;
             }
         }
 
