@@ -178,13 +178,32 @@ public sealed class Connection
 
     // ---- timers and background work -----------------------------------------------------
 
-    /// <summary>Run <paramref name="action"/> after <paramref name="delay"/>; dispose the result to cancel.</summary>
-    internal IDisposable Schedule(TimeSpan delay, Action action)
+    /// <summary>
+    /// Run <paramref name="action"/> once after <paramref name="delay"/>, on the thread pool; dispose
+    /// the result to cancel it. A disposed timer never runs its action, even one already due.
+    /// </summary>
+    internal IDisposable Schedule(TimeSpan delay, Action action) => new ScheduledAction(delay, action);
+
+    private sealed class ScheduledAction : IDisposable
     {
-        var cts = new CancellationTokenSource();
-        _ = Task.Delay(delay, cts.Token).ContinueWith(t =>
+        private readonly Action action;
+        private readonly Timer timer;
+        /// <summary>0 while pending; 1 once it has run or been cancelled, whichever came first.</summary>
+        private int done;
+
+        internal ScheduledAction(TimeSpan delay, Action action)
         {
-            if (t.IsCanceled) return;
+            this.action = action;
+            // The callback holds this, and the runtime's timer queue holds the callback, so a
+            // caller may drop the handle without the timer being collected before it fires.
+            timer = new Timer(_ => Fire(), null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            timer.Change(delay < TimeSpan.Zero ? TimeSpan.Zero : delay, Timeout.InfiniteTimeSpan);
+        }
+
+        private void Fire()
+        {
+            if (Interlocked.Exchange(ref done, 1) != 0) return;
+            timer.Dispose();
             try
             {
                 action();
@@ -193,8 +212,13 @@ public sealed class Connection
             {
                 Logger.Error("a timer task failed: " + e);
             }
-        }, TaskScheduler.Default);
-        return cts;
+        }
+
+        public void Dispose()
+        {
+            Interlocked.Exchange(ref done, 1);
+            timer.Dispose();
+        }
     }
 
     internal static void Background(Func<Task> work)
@@ -859,26 +883,30 @@ public sealed class Connection
             d.Delivery.Properties.MessageId, d.Delivery.Redelivered, d.Headers);
 
         HandlerStarted();
-        Task<HandlerResult> run;
-        try
-        {
-            run = handler(d.Delivery.Body, d.CorrelationId, context);
-        }
-        catch (Exception e)
-        {
-            run = Task.FromException<HandlerResult>(e);
-        }
-        _ = run.ContinueWith(_ => HandlerFinished(), TaskScheduler.Default);
-
         if (d.Options.Ordered)
         {
-            // Reply routing completes at once; no processing timeout applies.
-            await Settle(d, run).ConfigureAwait(false);
+            // Reply routing: inline, to keep the order, and completing at once; no processing
+            // timeout applies.
+            Task<HandlerResult> routed;
+            try
+            {
+                routed = handler(d.Delivery.Body, d.CorrelationId, context);
+            }
+            catch (Exception e)
+            {
+                routed = Task.FromException<HandlerResult>(e);
+            }
+            _ = routed.ContinueWith(_ => HandlerFinished(), TaskScheduler.Default);
+            await Settle(d, routed).ConfigureAwait(false);
             return;
         }
 
+        // The deadline starts first and the handler runs on the thread pool, so work it does
+        // before its first await (or a handler that never returns) is bounded too.
         using var expiry = new CancellationTokenSource();
         var deadline = Task.Delay(TimeSpan.FromMilliseconds(limit), expiry.Token);
+        var run = Task.Run(() => handler(d.Delivery.Body, d.CorrelationId, context));
+        _ = run.ContinueWith(_ => HandlerFinished(), TaskScheduler.Default);
         var first = await Task.WhenAny(run, deadline).ConfigureAwait(false);
         if (first == deadline && !run.IsCompleted)
         {
