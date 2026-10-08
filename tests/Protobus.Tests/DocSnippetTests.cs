@@ -33,6 +33,9 @@ public class DocSnippetTests
         return pages;
     }
 
+    /// <summary>A page with its line endings normalised: a Windows checkout has CRLF.</summary>
+    private static string Read(string page) => File.ReadAllText(Path.Combine(Root, page)).Replace("\r\n", "\n");
+
     private static IEnumerable<MetadataReference> References()
     {
         var tpa = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator);
@@ -43,8 +46,7 @@ public class DocSnippetTests
     [Fact]
     public void TheDocsHaveCheckedSnippets()
     {
-        var total = Pages().Sum(p => Snippet.Matches(File.ReadAllText(Path.Combine(Root, (string)p.Data)))
-            .Count);
+        var total = Pages().Sum(p => Snippet.Matches(Read((string)p.Data)).Count);
         Assert.True(total > 0, "no doc-check snippets found");
     }
 
@@ -52,7 +54,7 @@ public class DocSnippetTests
     [MemberData(nameof(Pages))]
     public void EveryMarkedSnippetCompiles(string page)
     {
-        var text = File.ReadAllText(Path.Combine(Root, page));
+        var text = Read(page);
         var trees = Snippet.Matches(text).Select(m =>
         {
             var line = text.Substring(0, m.Index).Split('\n').Length;
