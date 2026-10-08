@@ -317,6 +317,8 @@ public sealed class MessageDispatcher
         internal readonly string Id;
         private readonly long idleMs;
         private readonly object sync = new();
+        /// <summary>The call's lock, for tests that force an interleaving.</summary>
+        internal object SyncRoot => sync;
         private readonly Queue<byte[]> chunks = new();
         private long bufferedBytes;
         /// <summary>Highest sequence accepted, or null before the first and for peers that send none.</summary>
@@ -325,6 +327,11 @@ public sealed class MessageDispatcher
         private Exception? error;
         private bool cancelled;
         private IDisposable? idle;
+        /// <summary>
+        /// Which idle deadline is current. A deadline's callback can already be running, waiting
+        /// for the lock, when the deadline is reset; it expires the stream only if still current.
+        /// </summary>
+        private long idleGeneration;
         private TaskCompletionSource? waiter;
         internal Action ReleaseSignal = () => { };
 
@@ -350,19 +357,31 @@ public sealed class MessageDispatcher
         /// </summary>
         internal void ArmIdle()
         {
-            lock (sync)
-            {
-                idle?.Dispose();
-                if (ended) return;
-                idle = owner.connection.Schedule(TimeSpan.FromMilliseconds(idleMs), OnIdle);
-            }
+            lock (sync) ArmIdleLocked();
         }
 
-        private void OnIdle()
+        /// <summary><see cref="ArmIdle"/>, holding <c>sync</c>: atomic with the progress that resets it.</summary>
+        private void ArmIdleLocked()
+        {
+            DropIdleLocked();
+            if (ended) return;
+            var generation = idleGeneration;
+            idle = owner.connection.Schedule(TimeSpan.FromMilliseconds(idleMs), () => OnIdle(generation));
+        }
+
+        /// <summary>Cancel the current deadline, including a callback of it already under way; holding <c>sync</c>.</summary>
+        private void DropIdleLocked()
+        {
+            idle?.Dispose();
+            idle = null;
+            idleGeneration++;
+        }
+
+        private void OnIdle(long generation)
         {
             lock (sync)
             {
-                if (ended) return;
+                if (ended || generation != idleGeneration) return;
                 error = new StreamTimeoutError($"No streaming chunk received within {idleMs}ms");
                 ended = true;
                 Wake();
@@ -394,7 +413,7 @@ public sealed class MessageDispatcher
                     error ??= err;
                     ended = true;
                 }
-                idle?.Dispose();
+                DropIdleLocked();
                 Wake();
             }
             if (completed)
@@ -424,7 +443,7 @@ public sealed class MessageDispatcher
         /// <summary>Everything the call holds, released on any terminal outcome.</summary>
         internal void Release()
         {
-            lock (sync) idle?.Dispose();
+            lock (sync) DropIdleLocked();
             ReleaseSignal();
             owner.pendingStreams.TryRemove(new KeyValuePair<string, StreamCall>(Id, this));
             ReleaseBuffer();
@@ -527,6 +546,7 @@ public sealed class MessageDispatcher
                 if (!overflow)
                 {
                     if (isFinal) ended = true;
+                    else ArmIdleLocked();
                     Wake();
                 }
             }
@@ -535,10 +555,6 @@ public sealed class MessageDispatcher
                 ReleaseBuffer();
                 // The producer would keep going for a stream that has failed.
                 Cancel(true);
-            }
-            else if (!isFinal)
-            {
-                ArmIdle();
             }
         }
 
@@ -566,6 +582,7 @@ public sealed class MessageDispatcher
                     {
                         bufferedBytes -= chunk.Length;
                         owner.SubtractBuffered(chunk.Length);
+                        if (!ended) ArmIdleLocked();
                     }
                     else if (ended)
                     {
@@ -574,11 +591,7 @@ public sealed class MessageDispatcher
                     waiter ??= new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
                     wait = waiter.Task;
                 }
-                if (chunk != null)
-                {
-                    if (!Ended) ArmIdle();
-                    return chunk;
-                }
+                if (chunk != null) return chunk;
                 if (done)
                 {
                     Release();

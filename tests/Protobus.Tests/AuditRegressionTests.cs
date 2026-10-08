@@ -97,3 +97,48 @@ public class AuditRegressionTests : MemoryBus
         }
     }
 }
+
+/// <summary>Regressions for the findings of the C# port's second audit.</summary>
+public class SecondAuditRegressionTests : MemoryBus
+{
+    private static readonly Dictionary<string, object?> NotFinal = new() { [Config.HeaderFinal] = false };
+
+    [Fact]
+    public async Task AnIdleCallbackAlreadyRunningCannotExpireAStreamWhoseDeadlineWasReset()
+    {
+        var call = new MessageDispatcher.StreamCall(Ctx.MessageDispatcher, "s-1", 100);
+        call.ArmIdle();
+        lock (call.SyncRoot)
+        {
+            // The deadline passes while the lock is held: its callback starts and waits for it.
+            Thread.Sleep(300);
+            // A chunk arrives under the same lock and resets the deadline to 100 ms from now.
+            call.OnChunk(new byte[] { 1 }, NotFinal);
+        }
+        await Task.Delay(50);
+        Assert.False(call.Ended, "the stale callback expired a stream that had just made progress");
+        Assert.NotNull(await call.NextAsync());
+    }
+
+    [Fact]
+    public async Task ReadingAChunkResetsTheDeadlineWithNoGap()
+    {
+        var call = new MessageDispatcher.StreamCall(Ctx.MessageDispatcher, "s-2", 100);
+        call.ArmIdle();
+        call.OnChunk(new byte[] { 1 }, NotFinal);
+        lock (call.SyncRoot)
+        {
+            Thread.Sleep(300);
+            // Taking the chunk is progress too: the deadline it resets must be the one that counts.
+            // A buffered chunk is taken synchronously, so this read never blocks.
+            var read = call.NextAsync();
+            Assert.True(read.IsCompletedSuccessfully);
+#pragma warning disable xUnit1031
+            Assert.NotNull(read.Result);
+#pragma warning restore xUnit1031
+        }
+        await Task.Delay(50);
+        Assert.False(call.Ended);
+        call.Cancel(false);
+    }
+}
