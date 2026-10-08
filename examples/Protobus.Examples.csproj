@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../src/Protobus.Tools/build/Protobus.Tools.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>protobus-examples</AssemblyName>
+    <RootNamespace>Examples</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <ProtobusCodegenDll>$(MSBuildThisFileDirectory)../src/Protobus.Codegen/bin/$(Configuration)/net8.0/protobus-csharp.dll</ProtobusCodegenDll>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProtobusSchemas Include="proto" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- As a Protobus.Tools consumer has it: restored, its own targets not imported. -->
+    <PackageReference Include="Grpc.Tools" ExcludeAssets="all" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../src/Protobus/Protobus.csproj" />
+    <ProjectReference Include="../src/Protobus.Codegen/Protobus.Codegen.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <Import Project="../src/Protobus.Tools/build/Protobus.Tools.targets" />
+</Project>

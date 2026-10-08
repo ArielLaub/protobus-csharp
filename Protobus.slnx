@@ -3,6 +3,9 @@
     <Project Path="crosslang/CSharpPeer/CSharpPeer.csproj" />
     <Project Path="crosslang/Protobus.CrossLang.Tests/Protobus.CrossLang.Tests.csproj" />
   </Folder>
+  <Folder Name="/examples/">
+    <Project Path="examples/Protobus.Examples.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/Protobus.Codegen/Protobus.Codegen.csproj" />
     <Project Path="src/Protobus.Tools/Protobus.Tools.csproj" />
