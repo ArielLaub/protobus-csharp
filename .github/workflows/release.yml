@@ -1,0 +1,68 @@
+name: release
+
+# A tag vX.Y.Z publishes Protobus, Protobus.Tools and Protobus.Codegen X.Y.Z to
+# nuget.org, after the whole CI has passed on it. A push to nuget.org is final:
+# a version can be unlisted, never replaced or deleted.
+#
+# Run it by hand ("Run workflow") for a dry run: the packages are built, their
+# contents checked, and a project using only them is built and run; nothing
+# leaves the runner.
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: ${{ github.event_name == 'push' && 'publish to nuget.org' || 'dry run (pack and verify only)' }}
+    needs: ci
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+          dotnet-version: 8.0.x
+      - name: version
+        id: version
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = push ]; then
+            v="${GITHUB_REF_NAME#v}"
+          else
+            v="$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' Directory.Build.props | sed 's/-dev$//')-dryrun"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "publishing version $v"
+      - name: pack
+        run: dotnet pack Protobus.slnx -c Release -o artifacts -p:Version=${{ steps.version.outputs.version }}
+      - name: verify the packages
+        run: |
+          v=${{ steps.version.outputs.version }}
+          for p in Protobus Protobus.Tools Protobus.Codegen; do test -f "artifacts/$p.$v.nupkg" || { echo "missing $p.$v.nupkg"; exit 1; }; done
+          unzip -l "artifacts/Protobus.$v.nupkg" | grep -q "lib/net8.0/Protobus.dll"
+          unzip -l "artifacts/Protobus.$v.nupkg" | grep -q "content/protos/protobus/types.proto"
+          unzip -l "artifacts/Protobus.Tools.$v.nupkg" | grep -q "build/Protobus.Tools.targets"
+          unzip -l "artifacts/Protobus.Tools.$v.nupkg" | grep -q "tools/net8.0/protobus-csharp.dll"
+          unzip -p "artifacts/Protobus.Tools.$v.nupkg" Protobus.Tools.nuspec | grep -q 'dependency id="Grpc.Tools"'
+          unzip -l "artifacts/Protobus.Codegen.$v.nupkg" | grep -q "DotnetToolSettings.xml"
+          for i in 1 2; do dotnet build tests/PackageConsumer -warnaserror -p:ProtobusVersion=$v; done
+          dotnet run --project tests/PackageConsumer --no-build -p:ProtobusVersion=$v | grep "RESULT 20 + 22 = 42"
+      - name: push to nuget.org
+        if: github.event_name == 'push'
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: |
+          v=${{ steps.version.outputs.version }}
+          for p in Protobus Protobus.Codegen Protobus.Tools; do
+            dotnet nuget push "artifacts/$p.$v.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
+          done
