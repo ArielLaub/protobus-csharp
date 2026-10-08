@@ -79,7 +79,7 @@ public class IntegrationTests : IAsyncLifetime
         RealBroker.AmqpUrl();
         Config.Reset();
         Config.Set("RPC_CALL_TIMEOUT_MS", "15000");
-        if (Environment.GetEnvironmentVariable("PROTOBUS_TEST_LOG") == null) Logger.Level = LogLevel.Silent;
+        Logger.Level = Environment.GetEnvironmentVariable("PROTOBUS_TEST_LOG") == null ? LogLevel.Silent : LogLevel.Debug;
         name = "pbtest.Calc.it" + Guid.NewGuid().ToString("N").Substring(0, 8);
         return ValueTask.CompletedTask;
     }
@@ -196,7 +196,9 @@ public class IntegrationTests : IAsyncLifetime
             var same = new MessageProperties { MessageId = "same-id" };
             var routed = new List<Task<string>>();
             var unroutable = new List<Task<string>>();
-            for (var i = 0; i < 50; i++)
+            // Many, all at once: a return lost to a race between publishing and matching shows up
+            // as an unroutable publish reported stored.
+            for (var i = 0; i < 500; i++)
             {
                 routed.Add(conn.PublishAsync(ch, exchange, "routed", new byte[] { 1 }, new PublishOptions(same, true)));
                 unroutable.Add(conn.PublishAsync(ch, exchange, "nowhere", new byte[] { 2 }, new PublishOptions(same, true)));

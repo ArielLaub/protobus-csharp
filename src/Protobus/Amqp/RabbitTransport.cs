@@ -229,14 +229,27 @@ public sealed class RabbitTransport : ITransport
                 var tag = Internal.Headers.Text(e.BasicProperties.Headers is { } h && h.TryGetValue(PublishTagHeader, out var t) ? t : null);
                 // basic.return precedes the confirm of the same message, so the matching
                 // publish is still pending here.
-                foreach (var p in pending.OrderBy(kv => kv.Key).Select(kv => kv.Value))
+                // ToArray is the dictionary's own atomic snapshot. LINQ's would read Count and then
+                // copy, and throw when a publish lands in between, losing this return.
+                foreach (var kv in pending.ToArray().OrderBy(kv => kv.Key))
                 {
+                    var p = kv.Value;
                     if (!p.Returned && p.MessageId == id && p.Tag == tag)
                     {
                         p.Returned = true;
-                        break;
+                        Logger.Debug($"return for messageId {id} (tag {tag ?? "none"}) matched publish {kv.Key}");
+                        return Task.CompletedTask;
                     }
                 }
+                Logger.Warn($"a return for messageId {id} (tag {tag ?? "none"}) matched no pending publish; "
+                    + $"pending: {string.Join(",", pending.Select(kv => $"{kv.Key}:{kv.Value.Tag ?? "none"}"))}");
+                return Task.CompletedTask;
+            };
+            // The client swallows an exception thrown by an event handler; it would be a confirm
+            // or a return lost without a trace.
+            ch.CallbackExceptionAsync += (_, e) =>
+            {
+                Logger.Error($"channel callback failed: {e.Exception}");
                 return Task.CompletedTask;
             };
             ch.ChannelShutdownAsync += (_, args) =>
