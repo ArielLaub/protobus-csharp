@@ -1,0 +1,19 @@
+<Project>
+  <!--
+    protobus code generation for MSBuild. List the directories holding your shared schemas:
+
+      <ItemGroup>
+        <ProtobusSchemas Include="schemas" />
+      </ItemGroup>
+
+    Before compiling, every .proto under them is compiled with protoc (from Grpc.Tools) and a
+    <Service>Protobus class is generated per service; both are added to the build.
+  -->
+  <PropertyGroup>
+    <ProtobusCodegenDll Condition="'$(ProtobusCodegenDll)' == ''">$(MSBuildThisFileDirectory)../tools/net8.0/protobus-csharp.dll</ProtobusCodegenDll>
+    <ProtobusOutputDir Condition="'$(ProtobusOutputDir)' == ''">$(IntermediateOutputPath)protobus/</ProtobusOutputDir>
+    <!-- Custom types, semicolon separated: uuid:string;money:int64 -->
+    <ProtobusCustomTypes Condition="'$(ProtobusCustomTypes)' == ''"></ProtobusCustomTypes>
+    <ProtobusCustomTypeNamespace Condition="'$(ProtobusCustomTypeNamespace)' == ''">Protobus.Custom</ProtobusCustomTypeNamespace>
+  </PropertyGroup>
+</Project>

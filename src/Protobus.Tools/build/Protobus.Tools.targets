@@ -1,0 +1,33 @@
+<Project>
+  <PropertyGroup>
+    <_ProtobusDotnet>$(DOTNET_HOST_PATH)</_ProtobusDotnet>
+    <_ProtobusDotnet Condition="'$(_ProtobusDotnet)' == ''">dotnet</_ProtobusDotnet>
+    <_ProtobusStamp>$(ProtobusOutputDir).generated</_ProtobusStamp>
+  </PropertyGroup>
+
+  <Target Name="_ProtobusCollectInputs" Condition="'@(ProtobusSchemas)' != ''">
+    <ItemGroup>
+      <_ProtobusInputs Include="%(ProtobusSchemas.FullPath)/**/*.proto" />
+      <_ProtobusCustomType Include="$(ProtobusCustomTypes)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- protoc comes from Grpc.Tools: Protobuf_ResolvePlatform sets Protobuf_ProtocFullPath. -->
+  <Target Name="ProtobusGenerate"
+          Condition="'@(ProtobusSchemas)' != ''"
+          DependsOnTargets="Protobuf_ResolvePlatform;_ProtobusCollectInputs"
+          Inputs="@(_ProtobusInputs);$(ProtobusCodegenDll);$(MSBuildProjectFullPath)"
+          Outputs="$(_ProtobusStamp)">
+    <RemoveDir Directories="$(ProtobusOutputDir)" />
+    <Exec Command="&quot;$(_ProtobusDotnet)&quot; &quot;$(ProtobusCodegenDll)&quot; generate @(ProtobusSchemas->'--proto-dir &quot;%(FullPath)&quot;', ' ') @(_ProtobusCustomType->'--custom-type %(Identity)', ' ') --custom-type-namespace $(ProtobusCustomTypeNamespace) --out &quot;$(ProtobusOutputDir)&quot; --protoc &quot;$(Protobuf_ProtocFullPath)&quot;" />
+    <Touch Files="$(_ProtobusStamp)" AlwaysCreate="true" />
+  </Target>
+
+  <Target Name="_ProtobusAddGenerated" BeforeTargets="CoreCompile" DependsOnTargets="ProtobusGenerate"
+          Condition="'@(ProtobusSchemas)' != ''">
+    <ItemGroup>
+      <Compile Include="$(ProtobusOutputDir)**/*.cs" />
+      <FileWrites Include="$(ProtobusOutputDir)**/*;$(_ProtobusStamp)" />
+    </ItemGroup>
+  </Target>
+</Project>

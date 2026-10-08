@@ -3,4 +3,7 @@
     <Project Path="src/Protobus.Codegen/Protobus.Codegen.csproj" />
     <Project Path="src/Protobus/Protobus.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Protobus.Tests/Protobus.Tests.csproj" />
+  </Folder>
 </Solution>

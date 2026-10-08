@@ -1,0 +1,18 @@
+// Rpc names whose generated Java names would collide: fetch's async variant is
+// fetchAsync, which is also an rpc of its own. Compiling the generated code is
+// the test.
+syntax = "proto3";
+
+package naming;
+
+service Naming {
+  rpc fetch(Req) returns (Res);
+  rpc fetchAsync(Req) returns (Res);
+  rpc fetchAsyncAsync(Req) returns (Res);
+  rpc watch(Req) returns (stream Res);
+  rpc watchAsync(Req) returns (Res);
+}
+
+message Req {}
+
+message Res {}
