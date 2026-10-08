@@ -4,6 +4,7 @@
     <Project Path="src/Protobus/Protobus.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Protobus.IntegrationTests/Protobus.IntegrationTests.csproj" />
     <Project Path="tests/Protobus.Tests/Protobus.Tests.csproj" />
   </Folder>
 </Solution>

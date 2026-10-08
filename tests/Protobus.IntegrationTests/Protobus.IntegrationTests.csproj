@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../../src/Protobus.Tools/build/Protobus.Tools.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);xUnit1051</NoWarn>
+    <!-- The generator built from this repository, not a packaged one. -->
+    <ProtobusCodegenDll>$(MSBuildThisFileDirectory)../../src/Protobus.Codegen/bin/$(Configuration)/net8.0/protobus-csharp.dll</ProtobusCodegenDll>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProtobusSchemas Include="../schemas" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Protobus/Protobus.csproj" />
+    <ProjectReference Include="../../src/Protobus.Codegen/Protobus.Codegen.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <Import Project="../../src/Protobus.Tools/build/Protobus.Tools.targets" />
+</Project>
