@@ -106,13 +106,14 @@ public class SecondAuditRegressionTests : MemoryBus
     [Fact]
     public async Task AnIdleCallbackAlreadyRunningCannotExpireAStreamWhoseDeadlineWasReset()
     {
-        var call = new MessageDispatcher.StreamCall(Ctx.MessageDispatcher, "s-1", 100);
+        var call = new MessageDispatcher.StreamCall(Ctx.MessageDispatcher, "s-1", 400);
         call.ArmIdle();
         lock (call.SyncRoot)
         {
             // The deadline passes while the lock is held: its callback starts and waits for it.
-            Thread.Sleep(300);
-            // A chunk arrives under the same lock and resets the deadline to 100 ms from now.
+            Thread.Sleep(600);
+            // A chunk arrives under the same lock and resets the deadline to 400 ms from now. A
+            // stale callback runs the moment the lock is free, well inside that.
             call.OnChunk(new byte[] { 1 }, NotFinal);
         }
         await Task.Delay(50);
@@ -123,12 +124,12 @@ public class SecondAuditRegressionTests : MemoryBus
     [Fact]
     public async Task ReadingAChunkResetsTheDeadlineWithNoGap()
     {
-        var call = new MessageDispatcher.StreamCall(Ctx.MessageDispatcher, "s-2", 100);
+        var call = new MessageDispatcher.StreamCall(Ctx.MessageDispatcher, "s-2", 400);
         call.ArmIdle();
         call.OnChunk(new byte[] { 1 }, NotFinal);
         lock (call.SyncRoot)
         {
-            Thread.Sleep(300);
+            Thread.Sleep(600);
             // Taking the chunk is progress too: the deadline it resets must be the one that counts.
             // A buffered chunk is taken synchronously, so this read never blocks.
             var read = call.NextAsync();
