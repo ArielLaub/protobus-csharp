@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Google.Protobuf;
@@ -34,9 +35,14 @@ public sealed class Context : IAsyncDisposable
         Connection.Error += err => Logger.Error("Context: connection error - " + Errors.MessageOf(err));
     }
 
-    /// <summary>Connect and start the dispatchers.</summary>
-    public async Task InitAsync(string amqpUrl)
+    /// <summary>
+    /// Load the descriptor sets under <paramref name="schemaLocations"/> (none is fine when every
+    /// schema is compiled in; see <see cref="MessageFactory.Load"/>), connect, and start the
+    /// dispatchers.
+    /// </summary>
+    public async Task InitAsync(string amqpUrl, IEnumerable<string>? schemaLocations = null)
     {
+        Factory.Load(schemaLocations);
         await Connection.ConnectAsync(amqpUrl, options.Reconnection).ConfigureAwait(false);
         await messageDispatcher.InitAsync().ConfigureAwait(false);
         await eventDispatcher.InitAsync().ConfigureAwait(false);

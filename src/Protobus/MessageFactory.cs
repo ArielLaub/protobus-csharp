@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using Google.Protobuf;
 using Google.Protobuf.Reflection;
@@ -49,6 +50,111 @@ public sealed class MessageFactory
             foreach (var s in file.Services) services[s.FullName] = s;
         }
         Logger.Debug("registered schema " + file.Name);
+    }
+
+    // ---- descriptor sets ---------------------------------------------------------------
+
+    /// <summary>The file extensions <see cref="Load"/> takes for descriptor sets.</summary>
+    public static readonly IReadOnlyList<string> DescriptorSetExtensions = new[] { ".binpb", ".desc", ".pb", ".protoset" };
+
+    /// <summary>
+    /// Load every descriptor set at the given files, or under the given directories (recursively,
+    /// by <see cref="DescriptorSetExtensions"/>), for schemas not compiled into the program.
+    /// </summary>
+    /// <exception cref="SchemaError">a location does not exist, or a set does not load</exception>
+    public void Load(IEnumerable<string>? locations)
+    {
+        if (locations == null) return;
+        var found = new List<string>();
+        foreach (var location in locations)
+        {
+            if (Directory.Exists(location))
+                found.AddRange(Directory.EnumerateFiles(location, "*", SearchOption.AllDirectories)
+                    .Where(f => DescriptorSetExtensions.Any(x => f.EndsWith(x, StringComparison.Ordinal)))
+                    .OrderBy(f => f, StringComparer.Ordinal));
+            else if (File.Exists(location)) found.Add(location);
+            else throw new SchemaError($"schema location {location} does not exist");
+        }
+        if (found.Count > 0) Logger.Info($"loading {found.Count} descriptor set(s)");
+        foreach (var f in found) LoadDescriptorSet(f);
+    }
+
+    public void LoadDescriptorSet(string path)
+    {
+        byte[] bytes;
+        try
+        {
+            bytes = File.ReadAllBytes(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            throw new SchemaError($"could not read descriptor set {path}: {e.Message}");
+        }
+        LoadDescriptorSet(bytes);
+    }
+
+    /// <summary>
+    /// Load a serialized <c>FileDescriptorSet</c>. It must include the imports of the files it
+    /// carries (<c>protoc --include_imports</c>), except files already registered, such as
+    /// <c>protobus/types.proto</c>, which is always known. A file already registered (compiled in,
+    /// say) keeps its compiled descriptor.
+    /// </summary>
+    public void LoadDescriptorSet(byte[] serialized)
+    {
+        FileDescriptorSet set;
+        try
+        {
+            set = FileDescriptorSet.Parser.ParseFrom(serialized);
+        }
+        catch (InvalidProtocolBufferException e)
+        {
+            throw new SchemaError("not a FileDescriptorSet: " + e.Message);
+        }
+        var byName = new Dictionary<string, FileDescriptorProto>();
+        foreach (var f in set.File) byName.TryAdd(f.Name, f);
+        // Dependencies first, as the builder needs them; a registered file stands in for its own
+        // entry and is rebuilt from its serialized form, so nothing it imports is needed again.
+        var ordered = new List<ByteString>();
+        var visited = new HashSet<string>();
+        var stack = new List<string>();
+        void Visit(string name)
+        {
+            if (visited.Contains(name)) return;
+            if (stack.Contains(name)) throw new SchemaError("import cycle through " + name);
+            FileDescriptor? known;
+            lock (sync) files.TryGetValue(name, out known);
+            if (known != null)
+            {
+                VisitKnown(known);
+                return;
+            }
+            if (!byName.TryGetValue(name, out var proto))
+                throw new SchemaError($"descriptor set is missing {name}, imported by "
+                    + (stack.Count == 0 ? "?" : stack[^1]) + "; build it with protoc --include_imports");
+            stack.Add(name);
+            foreach (var dep in proto.Dependency) Visit(dep);
+            stack.RemoveAt(stack.Count - 1);
+            visited.Add(name);
+            ordered.Add(proto.ToByteString());
+        }
+        void VisitKnown(FileDescriptor known)
+        {
+            if (!visited.Add(known.Name)) return;
+            foreach (var dep in known.Dependencies) VisitKnown(dep);
+            ordered.Add(known.SerializedData);
+        }
+        foreach (var name in byName.Keys) Visit(name);
+        IReadOnlyList<FileDescriptor> built;
+        try
+        {
+            built = FileDescriptor.BuildFromByteStrings(ordered);
+        }
+        catch (ArgumentException e)
+        {
+            throw new SchemaError("invalid descriptor set: " + e.Message);
+        }
+        // Register skips the files already known, so those keep their compiled descriptors.
+        foreach (var file in built) Register(file);
     }
 
     private static void Collect(MessageDescriptor d, List<MessageDescriptor> into)
