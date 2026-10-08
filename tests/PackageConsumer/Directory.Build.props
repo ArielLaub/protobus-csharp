@@ -1,0 +1,3 @@
+<Project>
+  <!-- Stands alone: a consumer of the packed packages, not part of the repository build. -->
+</Project>

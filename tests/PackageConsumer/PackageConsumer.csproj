@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    A project that uses protobus only through its packages, as an application would. CI packs
+    the repository into artifacts/ as version 0.0.0-ci, builds this twice with warnings as
+    errors (the second build catches generated code compiled twice), and runs it.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ProtobusVersion Condition="'$(ProtobusVersion)' == ''">0.0.0-ci</ProtobusVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Protobus" Version="$(ProtobusVersion)" />
+    <PackageReference Include="Protobus.Tools" Version="$(ProtobusVersion)" />
+    <ProtobusSchemas Include="schemas" />
+  </ItemGroup>
+</Project>

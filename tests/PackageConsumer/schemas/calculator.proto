@@ -1,0 +1,12 @@
+syntax = "proto3";
+package Calculator;
+
+service Service {
+  rpc add(AddRequest) returns (AddResponse);
+  rpc count(CountRequest) returns (stream Number);
+}
+
+message AddRequest { int32 a = 1; int32 b = 2; }
+message AddResponse { int32 result = 1; bigint big = 2; }
+message CountRequest { int32 to = 1; }
+message Number { int32 n = 1; }

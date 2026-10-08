@@ -11,7 +11,8 @@
   -->
   <PropertyGroup>
     <ProtobusCodegenDll Condition="'$(ProtobusCodegenDll)' == ''">$(MSBuildThisFileDirectory)../tools/net8.0/protobus-csharp.dll</ProtobusCodegenDll>
-    <ProtobusOutputDir Condition="'$(ProtobusOutputDir)' == ''">$(IntermediateOutputPath)protobus/</ProtobusOutputDir>
+    <!-- Where the generated code goes; empty for $(IntermediateOutputPath)protobus/, resolved at build time. -->
+    <ProtobusOutputDir Condition="'$(ProtobusOutputDir)' == ''"></ProtobusOutputDir>
     <!-- Custom types, semicolon separated: uuid:string;money:int64 -->
     <ProtobusCustomTypes Condition="'$(ProtobusCustomTypes)' == ''"></ProtobusCustomTypes>
     <ProtobusCustomTypeNamespace Condition="'$(ProtobusCustomTypeNamespace)' == ''">Protobus.Custom</ProtobusCustomTypeNamespace>
