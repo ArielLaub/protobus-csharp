@@ -117,16 +117,13 @@ public class StreamTests : MemoryBus
     public async Task AProducerOutrunningItsConsumerFailsTheStream()
     {
         Config.Set("STREAM_MAX_BUFFERED_CHUNKS", "3");
-        var s = await ServeAsync();
-        await using var e = Proxy().Ticks(Ticks(50)).GetAsyncEnumerator();
-        // Nothing is published until the first read; after it, the producer runs ahead of a
-        // consumer that is not reading: past the three-chunk bound, the caller fails the stream
-        // and the producer is told to stop.
-        Assert.True(await e.MoveNextAsync());
-        Assert.True(await Eventually(() => s.Yielded >= 5 || s.StoppedEarly));
+        await ServeAsync();
+        // A consumer far slower than its producer: past the three-chunk bound the stream fails,
+        // at once, dropping what was buffered (as TypeScript does), so the failure can come before
+        // even the first chunk is read.
         await Assert.ThrowsAsync<StreamBackpressureError>(async () =>
         {
-            while (await e.MoveNextAsync()) { }
+            await foreach (var _ in Proxy().Ticks(Ticks(50))) await Task.Delay(300);
         });
     }
 
