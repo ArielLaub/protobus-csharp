@@ -10,6 +10,7 @@
     <!-- protoc, for the library's own types.proto and for the generator's tests. -->
     <PackageVersion Include="Grpc.Tools" Version="2.84.0" />
     <PackageVersion Include="xunit.v3" Version="4.0.1" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
   </ItemGroup>
