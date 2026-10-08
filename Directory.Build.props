@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Version>2.0.0-dev</Version>
+    <Authors>Ariel Laub</Authors>
+    <Copyright>Copyright (c) Ariel Laub</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/ArielLaub/protobus-csharp</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ArielLaub/protobus-csharp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+</Project>

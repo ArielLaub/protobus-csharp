@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Protobus.Codegen</RootNamespace>
+    <AssemblyName>protobus-csharp</AssemblyName>
+    <PackageId>Protobus.Codegen</PackageId>
+    <Description>The protobus code generator: service bases and typed proxies from shared .proto files.</Description>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>protobus-csharp</ToolCommandName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" />
+    <EmbeddedResource Include="../Protobus/Protos/protobus/types.proto" LogicalName="protobus/types.proto" />
+    <InternalsVisibleTo Include="Protobus.Tests" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>Protobus</RootNamespace>
+    <PackageId>Protobus</PackageId>
+    <Description>Schema-first RPC over RabbitMQ, with Protobuf on the wire. The C# port of protobus.</Description>
+    <PackageTags>rabbitmq;protobuf;rpc;microservices;amqp</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Generated code carries no documentation comments of its own. -->
+    <NoWarn>$(NoWarn);CS1591;CS1573</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Google.Protobuf" />
+    <PackageReference Include="RabbitMQ.Client" />
+    <PackageReference Include="Grpc.Tools" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Only protobus/types.proto (bigint, timestamp) is compiled here. The
+         envelopes are encoded by hand, byte for byte as TypeScript writes them. -->
+    <Protobuf Include="Protos/protobus/types.proto" ProtoRoot="Protos" GrpcServices="None" />
+    <!-- Shipped in the package, so a build compiling its own schemas can import it. -->
+    <None Include="Protos/protobus/types.proto" Pack="true" PackagePath="content/protos/protobus" />
+    <InternalsVisibleTo Include="Protobus.Tests" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Protobus.Codegen/Protobus.Codegen.csproj" />
+    <Project Path="src/Protobus/Protobus.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,11 @@
+bin/
+obj/
+artifacts/
+TestResults/
+*.user
+.vs/
+.idea/
+.vscode/
+.DS_Store
+.env
+.env.*
