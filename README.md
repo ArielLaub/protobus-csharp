@@ -13,14 +13,12 @@ it**, so load balancing, failover, backpressure, retries and dead-lettering are
 handled by the broker.
 
 This is the C# port of [protobus](https://github.com/ArielLaub/protobus)
-(TypeScript), [protobus-py](https://github.com/ArielLaub/protobus-py) (Python),
-[protobus-go](https://github.com/ArielLaub/protobus-go) (Go),
-[protobus-cpp](https://github.com/ArielLaub/protobus-cpp) (C++) and
-[protobus-java](https://github.com/ArielLaub/protobus-java) (Java), designed
-after the TypeScript reference class for class. The six are
-**wire-compatible**: a C# service serves TypeScript, Python, Go, C++ and Java
-callers and the other way round, with streaming, events, custom types and
-error codes included. See [Compatibility](docs/compatibility.md).
+(TypeScript), designed after the TypeScript reference class for class. The
+ports are **wire-compatible**: a C# service serves callers written for any of
+them and the other way round, with streaming, events, custom types and error
+codes included. They are listed under
+[Other languages](docs/README.md#other-languages); see also
+[Compatibility](docs/compatibility.md).
 
 **Status: new.** 2.0.0 is the first release of the C# port. Its runtime is at
 feature parity with the TypeScript port's, and its test suites run it against
@@ -378,8 +376,7 @@ create one context per process and share it. See
 ## Wire compatibility
 
 protobus-csharp speaks the protobus wire protocol exactly as TypeScript
-protobus 2.5, protobus-py 2.0, protobus-go 2.0, protobus-cpp 2.0 and
-protobus-java 2.0 do: the same exchanges, queues, envelopes (byte for byte),
+protobus 2.5 and the [other ports](docs/README.md#other-languages) do: the same exchanges, queues, envelopes (byte for byte),
 headers and error codes, and the same environment variables for
 configuration. Replicas of one service in different languages can share its
 queue and climb one retry ladder together. The
