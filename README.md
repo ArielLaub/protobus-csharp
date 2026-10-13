@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ArielLaub/protobus-csharp/main/docs/assets/banner.jpg" alt="ProtoBus: many languages, one message bus. A thin layer over Protocol Buffers and RabbitMQ." width="100%">
+</p>
+
 # ProtoBus for .NET
 
 **RabbitMQ-native microservices for C# and .NET, with Protocol Buffers on the wire.**
@@ -13,14 +17,11 @@ it**, so load balancing, failover, backpressure, retries and dead-lettering are
 handled by the broker.
 
 This is the C# port of [protobus](https://github.com/ArielLaub/protobus)
-(TypeScript), [protobus-py](https://github.com/ArielLaub/protobus-py) (Python),
-[protobus-go](https://github.com/ArielLaub/protobus-go) (Go),
-[protobus-cpp](https://github.com/ArielLaub/protobus-cpp) (C++) and
-[protobus-java](https://github.com/ArielLaub/protobus-java) (Java), designed
-after the TypeScript reference class for class. The six are
-**wire-compatible**: a C# service serves TypeScript, Python, Go, C++ and Java
-callers and the other way round, with streaming, events, custom types and
-error codes included. See [Compatibility](docs/compatibility.md).
+(TypeScript), designed after the TypeScript reference class for class. The
+ports are **wire-compatible**: a C# service serves callers written for any of
+them and the other way round, with streaming, events, custom types and error
+codes included. They are listed under
+[Wire compatibility](#wire-compatibility).
 
 **Status: new.** 2.0.0 is the first release of the C# port. Its runtime is at
 feature parity with the TypeScript port's, and its test suites run it against
@@ -378,13 +379,22 @@ create one context per process and share it. See
 ## Wire compatibility
 
 protobus-csharp speaks the protobus wire protocol exactly as TypeScript
-protobus 2.5, protobus-py 2.0, protobus-go 2.0, protobus-cpp 2.0 and
-protobus-java 2.0 do: the same exchanges, queues, envelopes (byte for byte),
+protobus 2.5 and the other ports do: the same exchanges, queues, envelopes (byte for byte),
 headers and error codes, and the same environment variables for
 configuration. Replicas of one service in different languages can share its
 queue and climb one retry ladder together. The
 [cross-language suite](crosslang/README.md) runs C# against the other ports'
 real libraries over a real broker, in both directions.
+
+| Language | Repo | Status |
+|---|---|---|
+| TypeScript | [protobus](https://github.com/ArielLaub/protobus) | stable (reference) |
+| Python | [protobus-py](https://github.com/ArielLaub/protobus-py) | stable |
+| Go | [protobus-go](https://github.com/ArielLaub/protobus-go) | stable |
+| C++ | [protobus-cpp](https://github.com/ArielLaub/protobus-cpp) | new |
+| Java | [protobus-java](https://github.com/ArielLaub/protobus-java) | new |
+| C# | [protobus-csharp](https://github.com/ArielLaub/protobus-csharp) (this repository) | new |
+| Rust | [protobus-rs](https://github.com/ArielLaub/protobus-rs) | new |
 
 The type mapping, the topology and the few deliberate behavioural differences
 are in **[Compatibility](docs/compatibility.md)**.
